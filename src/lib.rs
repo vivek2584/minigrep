@@ -1,9 +1,11 @@
+use std::env;
 use std::error::Error;
 use std::fs;
 
 pub struct Input {
     pub pattern: String,
     pub file_name: String,
+    pub case_sensitive: bool,
 }
 
 impl Input {
@@ -14,10 +16,12 @@ impl Input {
 
         let pattern = args[1].clone();
         let file_name = args[2].clone();
+        let case_sensitive = !(env::var("CASE_SENSITIVE").is_err());
 
         Ok(Input {
             pattern: pattern,
             file_name: file_name,
+            case_sensitive: case_sensitive,
         })
     }
 }
@@ -25,14 +29,20 @@ impl Input {
 pub fn run(input: Input) -> Result<(), Box<dyn Error>> {
     let contents = fs::read_to_string(input.file_name)?;
 
-    for line in search(&input.pattern, &contents) {
+    let results = if input.case_sensitive {
+        case_sensitive_search(&input.pattern, &contents)
+    } else {
+        case_insensitive_search(&input.pattern, &contents)
+    };
+
+    for line in results {
         println!("{}", line);
     }
 
     Ok(())
 }
 
-pub fn search<'a>(pattern: &str, contents: &'a str) -> Vec<&'a str> {
+pub fn case_sensitive_search<'a>(pattern: &str, contents: &'a str) -> Vec<&'a str> {
     let mut results = Vec::new();
     for line in contents.lines() {
         if line.contains(pattern) {
@@ -42,14 +52,41 @@ pub fn search<'a>(pattern: &str, contents: &'a str) -> Vec<&'a str> {
     results
 }
 
+pub fn case_insensitive_search<'a>(pattern: &str, contents: &'a str) -> Vec<&'a str> {
+    let pattern = pattern.to_lowercase();
+    let mut results = Vec::new();
+
+    for line in contents.lines() {
+        if line.to_lowercase().contains(&pattern) {
+            results.push(line);
+        }
+    }
+    results
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn test_one() {
-        let pattern = "duct";
-        let contents = "Rust:\nsafe, fast, productive.\nPick three.";
 
-        assert_eq!(vec!["safe, fast, productive."], search(pattern, contents));
+    #[test]
+    fn case_sensitive() {
+        let pattern = "duct";
+        let contents = "Rust:\nsafe, fast, productive.\nPick three.\nDuct tape.";
+
+        assert_eq!(
+            vec!["safe, fast, productive."],
+            case_sensitive_search(pattern, contents)
+        );
+    }
+
+    #[test]
+    fn case_insensitive() {
+        let pattern = "rUst";
+        let contents = "Rust:\nsafe, fast, productive.\nTrust?";
+
+        assert_eq!(
+            vec!["Rust:", "Trust?"],
+            case_insensitive_search(pattern, contents)
+        );
     }
 }
