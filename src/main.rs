@@ -3,9 +3,7 @@ use std::env;
 use std::process;
 
 fn main() {
-    let cmdline_args: Vec<String> = env::args().collect();
-
-    let input = Input::new(&cmdline_args).unwrap_or_else(|err| {
+    let input = Input::new(env::args()).unwrap_or_else(|err| {
         eprintln!("Failed to parse args : {}", err);
         process::exit(1);
     });

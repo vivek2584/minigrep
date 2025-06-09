@@ -9,13 +9,19 @@ pub struct Input {
 }
 
 impl Input {
-    pub fn new(args: &[String]) -> Result<Input, &str> {
-        if args.len() < 3 {
-            return Err("not enough args");
-        }
+    pub fn new(mut args: env::Args) -> Result<Input, &'static str> {
+        args.next();
 
-        let pattern = args[1].clone();
-        let file_name = args[2].clone();
+        let pattern = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Pattern not present"),
+        };
+
+        let file_name = match args.next() {
+            Some(arg) => arg,
+            None => return Err("File name not present"),
+        };
+
         let case_sensitive = !(env::var("CASE_SENSITIVE").is_err());
 
         Ok(Input {
@@ -43,25 +49,19 @@ pub fn run(input: Input) -> Result<(), Box<dyn Error>> {
 }
 
 pub fn case_sensitive_search<'a>(pattern: &str, contents: &'a str) -> Vec<&'a str> {
-    let mut results = Vec::new();
-    for line in contents.lines() {
-        if line.contains(pattern) {
-            results.push(line);
-        }
-    }
-    results
+    contents
+        .lines()
+        .filter(|line| line.contains(pattern))
+        .collect()
 }
 
 pub fn case_insensitive_search<'a>(pattern: &str, contents: &'a str) -> Vec<&'a str> {
     let pattern = pattern.to_lowercase();
-    let mut results = Vec::new();
 
-    for line in contents.lines() {
-        if line.to_lowercase().contains(&pattern) {
-            results.push(line);
-        }
-    }
-    results
+    contents
+        .lines()
+        .filter(|line| line.to_lowercase().contains(&pattern))
+        .collect()
 }
 
 #[cfg(test)]
